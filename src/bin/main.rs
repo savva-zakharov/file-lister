@@ -18,6 +18,8 @@ use iced::widget::{
     text_input,
     toggler,
 };
+
+use notify_rust::{Hint, Notification, Timeout};
 use iced::{ Center, Element, Fill, Shrink, Subscription, Theme };
 
 // Header size multiplier
@@ -101,7 +103,7 @@ enum Message {
     StartProgress,
     StopProgress,
     ProgressTick,
-    NotificationSent,
+    SendNotification(String)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,6 +117,13 @@ enum Choice {
 impl Styling {
     fn update(&mut self, message: Message) {
         match message {
+            Message::SendNotification(content) => {
+                let _ = notify_rust::Notification::new()
+                    .summary("click me")
+                    .body(&content)
+                   .action("default", "default")
+                   .action("clicked", "click here");
+            }
             Message::ThemeChanged(theme) => {
                 self.theme = Some(theme);
             }
@@ -262,7 +271,6 @@ impl Styling {
                     }
                 }
             }
-            Message::NotificationSent => {}
         }
     }
 
@@ -435,7 +443,9 @@ impl Styling {
                 .style(container::secondary)
         };
         let card_success = {
-            container(column![text("Success Card").size((self.text_size as f32 * HEADER_SCALE) as u32)].spacing(self.text_size as f32 * 1.2))
+            container(column![text("Success Card").size((self.text_size as f32 * HEADER_SCALE) as u32),
+            button(text("Send Notification").size(self.text_size)).on_press(Message::SendNotification("This is a success notification!".into()))
+            ].spacing(self.text_size as f32 * 1.2),)
                 .width(Fill)
                 .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
