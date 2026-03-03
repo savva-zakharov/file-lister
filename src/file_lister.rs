@@ -125,12 +125,10 @@ impl FileLister {
         }
 
         // Sort: directories first, then files, alphabetically
-        self.files.sort_by(|a, b| {
-            match (a.is_dir, b.is_dir) {
-                (true, false) => std::cmp::Ordering::Less,
-                (false, true) => std::cmp::Ordering::Greater,
-                _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-            }
+        self.files.sort_by(|a, b| match (a.is_dir, b.is_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
         });
     }
 
@@ -166,11 +164,7 @@ fn view(state: &FileLister) -> Element<'_, Message> {
     let title = text("File Lister").size(state.font_size + 10.0);
 
     // Current directory path
-    let path_text = text(format!(
-        "📁 {}",
-        state.current_dir.display()
-    ))
-    .size(state.font_size);
+    let path_text = text(format!("📁 {}", state.current_dir.display())).size(state.font_size);
 
     // Refresh button
     let refresh_btn = button(text("⟳ Refresh").size(state.font_size))
@@ -225,7 +219,8 @@ fn view(state: &FileLister) -> Element<'_, Message> {
                     } else {
                         selected.extension.to_uppercase()
                     }
-                }).size(state.font_size)
+                })
+                .size(state.font_size)
             ]
             .spacing(5),
             row![
