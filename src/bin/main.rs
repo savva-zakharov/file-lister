@@ -20,6 +20,9 @@ use iced::widget::{
 };
 use iced::{ Center, Element, Fill, Shrink, Subscription, Theme };
 
+// Header size multiplier
+const HEADER_SCALE: f32 = 2.0;
+
 // use iced::keyboard::Key::Character;
 
 pub fn main() -> iced::Result {
@@ -98,6 +101,7 @@ enum Message {
     StartProgress,
     StopProgress,
     ProgressTick,
+    NotificationSent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -249,22 +253,29 @@ impl Styling {
                     self.progress_value = (self.progress_value + 1.0).min(100.0);
                     if self.progress_value >= 100.0 {
                         self.progress_running = false;
+                        // Send desktop notification
+                        let _ = notify_rust::Notification::new()
+                            .summary("Progress Complete")
+                            .body("The 10-second progress has finished!")
+                            .timeout(notify_rust::Timeout::Milliseconds(3000))
+                            .show();
                     }
                 }
             }
+            Message::NotificationSent => {}
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
         let choose_theme = column![
             row![
-                text("Theme:"),
-                button(text("<").width(10)).on_press(Message::PreviousTheme),
+                text("Theme:").size(self.text_size),
+                button(text("<").size(self.text_size).width(10)).on_press(Message::PreviousTheme),
                 pick_list(Theme::ALL, self.theme.as_ref(), Message::ThemeChanged)
                     .width(Fill)
                     .placeholder("System"),
-                button(text(">").width(10)).on_press(Message::NextTheme),
-                button(text("X").width(10)).on_press(Message::ClearTheme)
+                button(text(">").size(self.text_size).width(10)).on_press(Message::NextTheme),
+                button(text("X").size(self.text_size).width(10)).on_press(Message::ClearTheme)
             ].spacing(10)
              .align_y(Center)
         ].spacing(20);
@@ -275,8 +286,8 @@ impl Styling {
 
         let text_input = text_input("Type something...", &self.input_value)
             .on_input(Message::InputChanged)
-            .padding(10)
-            .size(20);
+            .padding(self.text_size as f32 * 0.6)
+            .size(self.text_size);
 
         let buttons = {
             let button_config = [
@@ -292,7 +303,7 @@ impl Styling {
                     row(
                         button_config.into_iter().map(|(label, style, msg)| {
                             let is_active = self.card_state == label;
-                            let btn = button(text(label).width(Fill).center()).padding(10);
+                            let btn = button(text(label).size(self.text_size).width(Fill).center()).padding(self.text_size as f32 * 0.6);
                             if is_active {
                                 btn.style(button::primary).on_press(msg).into()
                             } else {
@@ -305,8 +316,8 @@ impl Styling {
                 } else {
                     row(
                         button_config.into_iter().map(|(label, style, _)| {
-                            button(text(label).width(Fill).center())
-                                .padding(10)
+                            button(text(label).size(self.text_size).width(Fill).center())
+                                .padding(self.text_size as f32 * 0.6)
                                 .style(style)
                                 .into()
                         })
@@ -339,108 +350,119 @@ impl Styling {
                 // ].spacing(10)
         };
 
-        let a: Element<'_, Message> = radio("A", Choice::A, self.selection, Message::RadioSelected).into();
+        let a: Element<'_, Message> = radio("A", Choice::A, self.selection, Message::RadioSelected).size(self.text_size).into();
 
-        let b: Element<'_, Message> = radio("B", Choice::B, self.selection, Message::RadioSelected).into();
+        let b: Element<'_, Message> = radio("B", Choice::B, self.selection, Message::RadioSelected).size(self.text_size).into();
 
-        let c: Element<'_, Message> = radio("C", Choice::C, self.selection, Message::RadioSelected).into();
+        let c: Element<'_, Message> = radio("C", Choice::C, self.selection, Message::RadioSelected).size(self.text_size).into();
 
-        let all: Element<'_, Message> = radio("All", Choice::All, self.selection, Message::RadioSelected).into();
+        let all: Element<'_, Message> = radio("All", Choice::All, self.selection, Message::RadioSelected).size(self.text_size).into();
 
-        let slider = || slider(0.0..=100.0, self.slider_value, Message::SliderChanged);
+        let slider = || slider(0.0..=100.0, self.slider_value, Message::SliderChanged).step(1.0);
 
         let progress = || progress_bar(0.0..=100.0, self.slider_value);
 
-        let scroll_me = scrollable(column!["Scroll me!", space().height(800), "You did it!"])
+        let scroll_me = scrollable(column![text("Scroll me!").size(self.text_size), space().height(800), text("You did it!").size(self.text_size)])
             .width(Fill)
             .height(Fill)
-            .auto_scroll(true);        
-        let scroll_me_2 = scrollable(column!["Scroll me!", space().height(800), "You did it!"])
+            .auto_scroll(true);
+        let scroll_me_2 = scrollable(column![text("Scroll me!").size(self.text_size), space().height(800), text("You did it!").size(self.text_size)])
             .width(Fill)
             .height(Fill)
             .auto_scroll(true);
 
         let check = checkbox(self.checkbox_value)
             .label("Enable Panel")
-            .on_toggle(Message::CheckboxToggled);
+            .on_toggle(Message::CheckboxToggled)
+            .size(self.text_size);
 
-        let check_disabled = checkbox(!self.checkbox_value).label("Disabled");
+        let check_disabled = checkbox(!self.checkbox_value).label("Disabled").size(self.text_size);
 
         let toggle1 = toggler(self.toggler_1_value)
             .label("Toggle me!")
             .on_toggle(Message::Toggler1Toggled)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
         let toggle2 = toggler(self.toggler_2_value)
             .label("No, toggle me!")
             .on_toggle(Message::Toggler2Toggled)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
         let toggle3 = toggler(self.toggler_3_value)
             .label("No, choose me!")
             .on_toggle(Message::Toggler3Toggled)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
 
         let toggle_fast = toggler(self.toggler_fast)
             .label("Fast")
             .on_toggle(Message::TogglerFast)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
         let toggle_good = toggler(self.toggler_good)
             .label("Good")
             .on_toggle(Message::TogglerGood)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
         let toggle_cheap = toggler(self.toggler_cheap)
             .label("Cheap")
             .on_toggle(Message::TogglerCheap)
-            .spacing(10);
+            .spacing(self.text_size as f32 * 0.6)
+            .size(self.text_size);
 
-        let disabled_toggle = toggler(!self.toggler_3_value).label("Disabled").spacing(10);
+        let disabled_toggle = toggler(!self.toggler_3_value).label("Disabled").spacing(self.text_size as f32 * 0.6).size(self.text_size);
 
         let card_primary = {
-            container(column![text("Card Example").size(24), slider(), progress()].spacing(20))
+            container(column![text("Card Example").size((self.text_size as f32 * HEADER_SCALE) as u32), slider(), progress()].spacing(self.text_size as f32 * 1.2))
                 .width(Fill)
-                .padding(20)
+                .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
                 .style(container::primary)
         };
         let card_secondary = {
             container(
                 column![
-                    text(" Secondary Card Example").size(24),
+                    text(" Secondary Card Example").size((self.text_size as f32 * HEADER_SCALE) as u32),
                     text(
                         "This is a secondary card style. It goes on to explain all the things about it. I don't want to set the world on fire, I just wawnt to start a flame in yiour heart."
-                    ).size(16),
+                    ).size(self.text_size),
                     choose_theme
-                ].spacing(20)
+                ].spacing(self.text_size as f32 * 1.2)
             )
                 .width(Fill)
-                .padding(20)
+                .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
                 .style(container::secondary)
         };
         let card_success = {
-            container(column![text("Success Card").size(self.text_size * 2)].spacing(20))
+            container(column![text("Success Card").size((self.text_size as f32 * HEADER_SCALE) as u32)].spacing(self.text_size as f32 * 1.2))
                 .width(Fill)
-                .padding(20)
+                .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
                 .style(container::success)
         };
         let card_warning = {
             container(
                 column![
-                    text("Warning Card").size(self.text_size * 2),
+                    text("Warning Card").size((self.text_size as f32 * HEADER_SCALE) as u32),
                     text(
                         "This is a warning card style. It goes on to explain all the things about it. I don't want to set the world on fire, I just wawnt to start a flame in yiour heart."
-                    ).size(self.text_size)
-                ].spacing(20)
+                    ).size(self.text_size),
+
+                    slider(),
+                    progress(),
+
+                ].spacing(self.text_size as f32 * 1.2)
             )
                 .width(Fill)
-                .padding(20)
+                .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
                 .style(container::warning)
         };
         let card_danger = {
             container(
                 column![
-                    text("Danger Card").size(self.text_size * 2),
+                    text("Danger Card").size((self.text_size as f32 * HEADER_SCALE) as u32),
                     scroll_me_2,
                     text(
                         "This is a danger card style. It goes on to explain all the things about it. I don't want to set the world on fire, I just wawnt to start a flame in yiour heart."
@@ -448,20 +470,20 @@ impl Styling {
                     if self.progress_running {
                         row![
                             progress_bar(0.0..=100.0, self.progress_value),
-                            button(text("Stop")).on_press(Message::StopProgress)
+                            button(text("Stop").size(self.text_size)).on_press(Message::StopProgress)
                         ]
                         .spacing(10)
                         .align_y(Center)
                     } else {
-                        row![button(text("Start 10s Progress")).on_press(Message::StartProgress)]
+                        row![button(text("Start 10s Progress").size(self.text_size)).on_press(Message::StartProgress)]
                             .spacing(10)
                             .align_y(Center)
                     }
-                ].spacing(20)
+                ].spacing(self.text_size as f32 * 1.2)
                 .height(300)
             )
                 .width(Fill)
-                .padding(20)
+                .padding(self.text_size as f32 * 1.2)
                 .style(container::bordered_box)
                 .style(container::danger)
         };
@@ -472,7 +494,7 @@ impl Styling {
         };
 
         let content = column![
-            
+
             // choose_theme,
             // row![
             //     theme_previous,
@@ -489,13 +511,13 @@ impl Styling {
             row![
                 scroll_me.height(200),
                 rule::vertical(1),
-                column![check, check_disabled, disabled_toggle, toggle1, toggle2, toggle3],
+                column![check, check_disabled, disabled_toggle, toggle1, toggle2, toggle3].spacing(self.text_size as f32 * 0.6),
                 rule::vertical(1),
-                column![toggle_fast, toggle_good, toggle_cheap].spacing(10),
+                column![toggle_fast, toggle_good, toggle_cheap].spacing(10).spacing(self.text_size as f32 * 0.6),
                 rule::vertical(1),
-                column![slider(), progress(), a, b, c, all]
+                column![a, b, c, all].spacing(self.text_size as f32 * 0.6)
             ]
-                .spacing(10)
+                .spacing(self.text_size as f32 * 0.6)
                 .height(Shrink)
                 .align_y(Center),
             if self.checkbox_value {
@@ -516,11 +538,11 @@ impl Styling {
                 card_blank
             }
         ]
-            .spacing(20)
-            .padding(20)
-            .max_width(600);
+            .spacing(self.text_size as f32 * 1.2)
+            .padding(self.text_size as f32 * 1.2)
+            .max_width(self.text_size as f32 * 40.0);
 
-        scrollable(center_x(content)).spacing(10).into()
+        scrollable(center_x(content)).spacing(self.text_size as f32 * 0.6).into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
