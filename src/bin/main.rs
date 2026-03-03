@@ -1,4 +1,5 @@
 use iced::keyboard;
+use iced::time;
 use iced::widget::{
     button,
     center_x,
@@ -46,6 +47,8 @@ impl Default for Styling {
             card_state: String::default(),
             selection: None,
             text_size: 16,
+            progress_value: 0.0,
+            progress_running: false,
         }
     }
 }
@@ -92,6 +95,9 @@ enum Message {
     ClearTheme,
     FontSizeIncreased,
     FontSizeDecreased,
+    StartProgress,
+    StopProgress,
+    ProgressTick,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,7 +236,22 @@ impl Styling {
             Message::FontSizeDecreased => {
                 self.text_size = self.text_size.saturating_sub(2).max(8);
             }
-
+            Message::StartProgress => {
+                self.progress_running = true;
+                self.progress_value = 0.0;
+            }
+            Message::StopProgress => {
+                self.progress_running = false;
+                self.progress_value = 0.0;
+            }
+            Message::ProgressTick => {
+                if self.progress_running {
+                    self.progress_value = (self.progress_value + 1.0).min(100.0);
+                    if self.progress_value >= 100.0 {
+                        self.progress_running = false;
+                    }
+                }
+            }
         }
     }
 
@@ -328,7 +349,7 @@ impl Styling {
 
         let slider = || slider(0.0..=100.0, self.slider_value, Message::SliderChanged);
 
-        let progress_bar = || progress_bar(0.0..=100.0, self.slider_value);
+        let progress = || progress_bar(0.0..=100.0, self.slider_value);
 
         let scroll_me = scrollable(column!["Scroll me!", space().height(800), "You did it!"])
             .width(Fill)
@@ -374,7 +395,7 @@ impl Styling {
         let disabled_toggle = toggler(!self.toggler_3_value).label("Disabled").spacing(10);
 
         let card_primary = {
-            container(column![text("Card Example").size(24), slider(), progress_bar()].spacing(20))
+            container(column![text("Card Example").size(24), slider(), progress()].spacing(20))
                 .width(Fill)
                 .padding(20)
                 .style(container::bordered_box)
@@ -423,7 +444,19 @@ impl Styling {
                     scroll_me_2,
                     text(
                         "This is a danger card style. It goes on to explain all the things about it. I don't want to set the world on fire, I just wawnt to start a flame in yiour heart."
-                    ).size(self.text_size)
+                    ).size(self.text_size),
+                    if self.progress_running {
+                        row![
+                            progress_bar(0.0..=100.0, self.progress_value),
+                            button(text("Stop")).on_press(Message::StopProgress)
+                        ]
+                        .spacing(10)
+                        .align_y(Center)
+                    } else {
+                        row![button(text("Start 10s Progress")).on_press(Message::StartProgress)]
+                            .spacing(10)
+                            .align_y(Center)
+                    }
                 ].spacing(20)
                 .height(300)
             )
@@ -452,7 +485,7 @@ impl Styling {
             text_input,
             buttons,
             slider(),
-            progress_bar(),
+            progress(),
             row![
                 scroll_me.height(200),
                 rule::vertical(1),
@@ -460,8 +493,7 @@ impl Styling {
                 rule::vertical(1),
                 column![toggle_fast, toggle_good, toggle_cheap].spacing(10),
                 rule::vertical(1),
-
-                column![a, b, c, all]
+                column![slider(), progress(), a, b, c, all]
             ]
                 .spacing(10)
                 .height(Shrink)
@@ -492,7 +524,7 @@ impl Styling {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        keyboard::listen().filter_map(|event| {
+        let keyboard = keyboard::listen().filter_map(|event| {
             let keyboard::Event::KeyPressed { key, repeat: false, .. } = event else {
                 return None;
             };
@@ -514,7 +546,16 @@ impl Styling {
                 }
                 _ => None,
             }
-        })
+        });
+
+        let progress = if self.progress_running {
+            time::every(std::time::Duration::from_millis(100))
+                .map(|_| Message::ProgressTick)
+        } else {
+            Subscription::none()
+        };
+
+        Subscription::batch([keyboard, progress])
     }
 
     fn theme(&self) -> Option<Theme> {
